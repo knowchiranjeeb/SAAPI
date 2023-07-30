@@ -24,17 +24,6 @@ const app = express();
 const port = 8000;
 
 
-//const certificate = fs.readFileSync('./security/cert.pem', 'utf8');
-//const privatekey = fs.readFileSync('./security/cert.key', 'utf8');
-
-// Create the credentials object
-//const credentials = {
-//  key: privatekey,
-//  cert: certificate,
-// };
-
-//const server = https.createServer(credentials, app);
-
 app.use(cors());
 
 // Middleware
