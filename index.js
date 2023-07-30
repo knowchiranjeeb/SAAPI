@@ -21,7 +21,7 @@ const hsnRoutes = require('./src/HSNCode');
 const userRoutes = require('./src/Users');
 const cors = require('cors');
 const app = express();
-const port = 8080;
+const port = 8000;
 
 
 app.use(cors());
@@ -40,7 +40,7 @@ const options = {
         contact: {
           name: "Chiranjeeb Sengupta",
         },
-        servers: ["https:*localhost:8080"],
+        servers: ["https:*localhost:8000"],
       },
     },    
     apis: ["./src/*.js"],
