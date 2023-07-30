@@ -4,8 +4,6 @@ const pool = require('../db');
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
-const multer = require('multer');
-require('dotenv').config()
 
 // Function to generate an OTP of the specified number of digits
 function generateOTP(digits) {
