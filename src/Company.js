@@ -70,7 +70,7 @@ router.get('/api/GetCompanyDetails/:compid', authenticateToken, async (req, res)
           picname = company.logofile;
         }
 
-        const extension = path.extname(picPath).toLowerCase();
+        const extension = path.extname(picname).toLowerCase();
         let contentType = 'application/octet-stream'; // Default content type
   
         // Determine the content type based on the image extension
