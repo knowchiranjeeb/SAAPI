@@ -1,9 +1,11 @@
 
 const pg = require('pg');
-const dbHost = 'tfcolsocial-do-user-14281593-0.b.db.ondigitalocean.com';
-const dbUser = 'doadmin';
-const dbPass = 'AVNS_IStoLHxESBLt80vLiFM';
-const dbase = 'Invoice';
+
+const dbHost = process.env.DB_HOST;
+const dbUser = process.env.DB_USER;
+const dbPass = process.env.DB_PASS;
+const dbase = process.env.DB;
+
 
 // Database Configuration
 const pool = new pg.Pool({
