@@ -8,7 +8,7 @@ const { generateOTP, sendEmail, sendSMS, savePicture, fetchPicture, writeToUserL
 
 const upload = multer({ dest: 'uploads/' });
 
-const siteadd = 'http://www.supergst.com'
+const siteadd = 'https://hammerhead-app-m29gp.ondigitalocean.app/'
 
 /**
  * @swagger
