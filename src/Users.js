@@ -577,7 +577,11 @@ router.put('/api/UpdateUserDet', upload.single('picture'),  authenticateToken, a
 
     const extension = path.extname(req.file.originalname).toLowerCase();
 
-    const pictureUrl = await savePicture(req.file, 'UP'+userid.toString()+extension);
+    let pictureUrl = await savePicture(req.file, 'UP'+userid.toString()+extension);
+
+    if (pictureUrl) {
+      pictureUrl = '/profilepic/' + 'UP'+userid.toString()+extension;
+    }
 
     // Update the user details
     const updateQuery = `
