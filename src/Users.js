@@ -235,7 +235,7 @@ router.post('/api/SendMobileOTP', authenticateToken, async (req, res) => {
   }
 
   try {
-    const query = 'SELECT u.userid, u.fullname, u.mobileno as mobileno1, u.mobotp, co.isdcode FROM "Users" u, "Company" c,"Country" co WHERE u.compid=c.compid and c.countryid=co.countryid and u.mobileno = $1';
+    const query = 'SELECT u.userid, u.fullname, u.mobileno as mobileno1, u.mobotp, co.isdcode FROM "Users" u, "Country" co WHERE u.countryid=co.countryid and u.mobileno = $1';
 
     const { rows } = await pool.query(query, [mobileno]);
     if (rows.length === 0) {
@@ -244,7 +244,7 @@ router.post('/api/SendMobileOTP', authenticateToken, async (req, res) => {
 
     const { userid, fullname, mobileno1, mobotp, isdcode } = rows[0];
     const OTPLink = `${siteadd}api/VerifyOTP/mob/${userid}/${mobotp}`;
-    const mobno =  toString(mobotp).trim() + toString(mobileno1).trim()
+    const mobno =  toString(isdcode).trim() + toString(mobileno1).trim()
     const msg1 = 'Dear Customer, ' + mobotp + ' is your OTP from AmiBong.com Login. For security reasons, Do not share this OTP with anyone.'
     //const msg1 = 'Hi '+fullname+', Thanks you for Registering with Super GST Invoice. Click on the link ' + OTPLink+' to verify your Mobile Number. Thanks from SUPER GST Invoice Team. Happy Invoicing.'
     const ret = sendSMS(mobno,'Verify your Mobile Number for SuperGST Invoice Application',msg1)
