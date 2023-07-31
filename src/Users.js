@@ -31,7 +31,7 @@ const siteadd = 'http://www.supergst.com'
  *         schema:
  *           type: string
  *         required: true
- *         description: User Identification
+ *         description: User Identification (Email or Mobile Number [Without country Code])
  *       - in: path
  *         name: password
  *         schema:
@@ -341,7 +341,6 @@ router.post('/api/VerifyOTP/:otpType/:userid/:otp', async (req, res) => {
   }
 });
 
-
 /**
  * @swagger
  * /api/UpdatePassword:
@@ -407,6 +406,53 @@ router.post('/api/UpdatePassword', authenticateToken, async (req, res) => {
  *     responses:
  *       200:
  *         description: Returns the user details
+ *       400:
+ *         description: Invalid request or missing parameters
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/api/GetUserDet/:userid', authenticateToken, async (req, res) => {
+  const { userid } = req.params;
+
+  if (!userid) {
+    return res.status(400).json({ error: 'Invalid request or missing parameters' });
+  }
+
+  try {
+    const query = 'SELECT company, salid, fullname, emailid, emailverified as isemailverified, mobileno, mobileverified as ismobileverified, usertype FROM "Users" WHERE userid = $1';
+    const { rows } = await pool.query(query, [userid]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/GetUserPicture/{userid}:
+ *   get:
+ *     summary: Get user picture from the Users table based on the userid
+ *     tags: [Users]
+ *     security:
+ *       - basicAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userid
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: Returns the user picture
  *         content:
  *           '*':
  *            schema:
@@ -415,30 +461,6 @@ router.post('/api/UpdatePassword', authenticateToken, async (req, res) => {
  *                 picture:
  *                   type: string
  *                   format: binary 
- *                 company:
- *                   type: string
- *                   description: The Company name.
- *                 salid:
- *                   type: integer
- *                   description: Salutation ID.
- *                 fullname:
- *                   type: string
- *                   description: The user's full name.
- *                 emailid:
- *                   type: string
- *                   description: The user's email id.
- *                 isemailverified:
- *                   type: boolean
- *                   description: Is the user's email id verified.
- *                 mobileno:
- *                   type: string
- *                   description: The user's mobile no.
- *                 ismobileverified:
- *                   type: boolean
- *                   description: Is the user's mobile no. verified.
- *                 usertype:
- *                   type: string
- *                   description: The user type.
  *       500:
  *         description: Failed to fetch the user details.
  *         content:
@@ -450,7 +472,7 @@ router.post('/api/UpdatePassword', authenticateToken, async (req, res) => {
  *                   type: string
  *                   description: Error message.
  */
-router.get('/api/GetUserDet/:userid', authenticateToken, async (req, res) => {
+router.get('/api/GetUserPicture/:userid', authenticateToken, async (req, res) => {
   const { userid } = req.params;
 
   if (!userid) {
@@ -488,20 +510,13 @@ router.get('/api/GetUserDet/:userid', authenticateToken, async (req, res) => {
 
     const data  =  await fetchPicture(picname);
     res.set('Content-Type', contentType);
-    res.set('company', user.company);
-    res.set('salid', user.salid);
-    res.set('Fullname', user.fullname);
-    res.set('emailid', user.emailid);
-    res.set('isemailverified', user.isemailverified);
-    res.set('mobileno', user.mobileno);
-    res.set('ismobileverified', user.ismobileverified);
-    res.set('usertype', user.usertype);
     res.status(200).send(data);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 /**
  * @swagger
@@ -799,7 +814,7 @@ router.get('/api/GetUserList/:compid', authenticateToken, async (req, res) => {
  * @swagger
  * /api/GetUserDetForHeader/{userid}:
  *   get:
- *     summary: Get users by compid from the Users table
+ *     summary: Get users by userid to display in the header and set user permission
  *     tags: [Users]
  *     security:
  *       - basicAuth: []
