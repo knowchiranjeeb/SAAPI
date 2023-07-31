@@ -19,35 +19,35 @@ const siteadd = 'http://www.supergst.com'
 
 /**
  * @swagger
- * /api/CheckCred:
+ * /api/CheckCred/{userind}/{password}:
  *   get:
  *     summary: Check the Credential based on mobile number or email ID and Password
  *     tags: [Users]
  *     security:
  *       - basicAuth: []
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               userind:
- *                 type: string
- *               password:
- *                 type: string
- *             required:
- *               - userind
- *               - password
+ *     parameters:
+ *       - in: path
+ *         name: userind
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: User Identification
+ *       - in: path
+ *         name: password
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: User Password to Check
  *     responses:
  *       200:
- *         description: Returns the user ID if found
+ *         description: Returns the user ID if found and 0 if not found
  *       400:
  *         description: Invalid request or missing parameters
  *       500:
  *         description: Internal server error
  */
-router.get('/api/CheckCred', authenticateToken, async (req, res) => {
-  const { userind, password } = req.body;
+router.get('/api/CheckCred/:userind/:password', authenticateToken, async (req, res) => {
+  const { userind, password } = req.params;
 
   if (!userind || !password) {
     return res.status(400).json({ error: 'Invalid request or missing parameters' });
@@ -63,7 +63,7 @@ router.get('/api/CheckCred', authenticateToken, async (req, res) => {
     if (userid) {
       return res.status(200).json({ userid });
     } else {
-      return res.status(404).json('Invalid Credentails');
+      return res.status(201).json({userid : 0});
     }
   } catch (err) {
     console.error(err);
@@ -391,14 +391,14 @@ router.post('/api/UpdatePassword', authenticateToken, async (req, res) => {
 
 /**
  * @swagger
- * /api/GetUserDet:
+ * /api/GetUserDet/{userid}:
  *   get:
  *     summary: Get user details from the Users table based on the userid
  *     tags: [Users]
  *     security:
  *       - basicAuth: []
  *     parameters:
- *       - in: query
+ *       - in: path
  *         name: userid
  *         schema:
  *           type: integer
@@ -450,8 +450,8 @@ router.post('/api/UpdatePassword', authenticateToken, async (req, res) => {
  *                   type: string
  *                   description: Error message.
  */
-router.get('/api/GetUserDet', authenticateToken, async (req, res) => {
-  const { userid } = req.query;
+router.get('/api/GetUserDet/:userid', authenticateToken, async (req, res) => {
+  const { userid } = req.params;
 
   if (!userid) {
     return res.status(400).json({ error: 'Invalid request or missing parameters' });
@@ -756,14 +756,14 @@ router.post('/api/SaveUserRole', authenticateToken, async (req, res) => {
 
 /**
  * @swagger
- * /api/GetUserList:
+ * /api/GetUserList/{compid}:
  *   get:
- *     summary: Get users by compid from the Users table
+ *     summary: Get users (only Normal user list) by compid from the Users table
  *     tags: [Users]
  *     security:
  *       - basicAuth: []
  *     parameters:
- *       - in: query
+ *       - in: path
  *         name: compid
  *         schema:
  *           type: integer
@@ -777,15 +777,15 @@ router.post('/api/SaveUserRole', authenticateToken, async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.get('/api/GetUserList', authenticateToken, async (req, res) => {
-  const { compid } = req.query;
+router.get('/api/GetUserList/:compid', authenticateToken, async (req, res) => {
+  const { compid } = req.params;
 
   if (!compid) {
     return res.status(400).json({ error: 'Invalid request or missing parameters' });
   }
 
   try {
-    const query = 'SELECT userid, username, emailid, mobileno FROM "Users" WHERE usertype = $1 AND compid = $2';
+    const query = 'SELECT userid, fullname, emailid, mobileno FROM "Users" WHERE usertype = $1 AND compid = $2';
     const { rows } = await pool.query(query, ['U', compid]);
 
     return res.status(200).json(rows);
@@ -794,5 +794,47 @@ router.get('/api/GetUserList', authenticateToken, async (req, res) => {
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+/**
+ * @swagger
+ * /api/GetUserDetForHeader/{userid}:
+ *   get:
+ *     summary: Get users by compid from the Users table
+ *     tags: [Users]
+ *     security:
+ *       - basicAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userid
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: Returns the user details for the provided userid
+ *       400:
+ *         description: Invalid request or missing parameters
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/api/GetUserDetForHeader/:userid', authenticateToken, async (req, res) => {
+  const { userid } = req.params;
+
+  if (!userid) {
+    return res.status(400).json({ error: 'Invalid request or missing parameters' });
+  }
+
+  try {
+    const query = 'SELECT userid, compid, fullname, usertype FROM "Users" WHERE userid = $1';
+    const { rows } = await pool.query(query, [userid]);
+
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 
 module.exports = router;
