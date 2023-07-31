@@ -174,24 +174,30 @@ router.post('/api/SendEmailOTP', authenticateToken, async (req, res) => {
 
   try {
 
-    const query = 'SELECT userid, emailid as emailid1, fullname, emailotp FROM "Users" WHERE emailid = $1';
+    const query = 'SELECT userid, emailid as emailid1, fullname FROM "Users" WHERE emailid = $1';
 
     const { rows } = await pool.query(query, [emailid]);
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Email ID not found' });
     }
 
-    const { userid, fullname, emailid1, emailotp } = rows[0];
-    const OTPLink = `${siteadd}api/VerifyOTP/email/${userid}/${emailotp}`;
-    const ret = sendEmail(emailid1,'Verify your Email ID for SuperGST Invoice Application','Hi '+fullname+', Thanks you for Registering with Super GST Invoice. Click on the link ' + OTPLink+' to verify your Email. Thanks SUPER GST Invoice. Happy Invoicing.')
-    let msg = ''
+    const eOTP = generateOTP(6);
+    
+    const updOTP = 'Update "Users" set emailotp=$1 where emailid = $2';
+
+    await pool.query(updOTP, [eOTP, emailid]);
+
+    const { userid, fullname, emailid1 } = rows[0];
+    const OTPLink = `${siteadd}api/VerifyOTP/email/${userid}/${eOTP}`;
+    const ret = sendEmail(emailid1,'Verify your Email ID for SuperGST Invoice Application','Hi '+fullname+', Thanks you for Registering with Super GST Invoice. Click on the link ' + OTPLink+' to verify your Email. Good Luck from SUPER GST Invoice Team. Happy Invoicing.');
+    let msg = '';
     if (ret === 'Email sent successfully') {
       msg='Please check your email - ' + emailid1 +' for a verification email'; 
     }
     else {
       msg='Please try later.Could not send a verification email to ' + emailid1 ; 
     }
-    return res.status(200).json({'Message': msg}) 
+    return res.status(200).json({'Message': msg}); 
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Internal server error' });
@@ -234,26 +240,33 @@ router.post('/api/SendMobileOTP', authenticateToken, async (req, res) => {
     return res.status(400).json({ error: 'Invalid request or missing parameters' });
   }
 
-  try {
-    const query = 'SELECT u.userid, u.fullname, u.mobileno as mobileno1, u.mobotp, co.isdcode FROM "Users" u, "Country" co WHERE u.countryid=co.countryid and u.mobileno = $1';
+  try {    
+    const query = 'SELECT u.userid, u.fullname, u.mobileno as mobileno1, co.isdcode FROM "Users" u, "Country" co WHERE u.countryid=co.countryid and u.mobileno = $1';
 
     const { rows } = await pool.query(query, [mobileno]);
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Mobile Number not found' });
     }
 
-    const { userid, fullname, mobileno1, mobotp, isdcode } = rows[0];
-    const OTPLink = `${siteadd}api/VerifyOTP/mob/${userid}/${mobotp}`;
-    const mobno =  toString(isdcode).trim() + toString(mobileno1).trim()
-    const msg1 = 'Dear Customer, ' + mobotp + ' is your OTP from AmiBong.com Login. For security reasons, Do not share this OTP with anyone.'
-    //const msg1 = 'Hi '+fullname+', Thanks you for Registering with Super GST Invoice. Click on the link ' + OTPLink+' to verify your Mobile Number. Thanks from SUPER GST Invoice Team. Happy Invoicing.'
-    const ret = sendSMS(mobno,'Verify your Mobile Number for SuperGST Invoice Application',msg1)
+    const mOTP = generateOTP(6);
+    
+    const updOTP = 'Update "Users" set mobotp=$1 where mobileno = $2';
+
+    await pool.query(updOTP, [mOTP, mobileno]);
+
+    const { userid, fullname, mobileno1, isdcode } = rows[0];
+    const OTPLink = `${siteadd}api/VerifyOTP/mob/${userid}/${mOTP}`;
+    const mobno =  isdcode.toString().trim() + mobileno1.toString().trim();
+    //const msg1 = 'Dear Customer, ' + mOTP.toString() + ' is your OTP from AmiBong.com Login. For security reasons, Do not share this OTP with anyone.';
+    const msg1 = 'Dear Customer, ' + mOTP.toString() + ' is your OTP from AmiBong.com Login. For security reasons, Do not share this OTP with anyone.';
+    const ret = sendSMS(msg1, mobno);
     let msg = ''
+    console.log(ret);
     if (ret === 'SMS sent successfully') {
-      msg = 'Please check your mobile. An SMS has been send to mobile number ' + toString(mobileno1) +', for a mobile number verification'; 
+      msg = 'Please check your mobile. An SMS has been send to mobile number ' + mobileno1.toString() +', for a mobile number verification'; 
     }
     else {
-      msg = 'Please try later. Could not send a verification message to ' + toString(mobileno1) ; 
+      msg = 'Please try later. Could not send a verification message to ' + mobileno1.toString() ; 
     }
     return res.status(200).json({'Message': msg}) 
   } catch (err) {

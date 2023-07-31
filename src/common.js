@@ -5,6 +5,13 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 
+const emailHost = process.env.EMAIL_HOST;
+const emailUser = process.env.EMAIL_USER;
+const emailPass = process.env.EMAIL_PASSWORD;
+const smsSender = process.env.SMS_SENDER;
+const smsURL = process.env.SMS_URL;
+const smsAPI = process.env.SMS_API;
+
 // Function to generate an OTP of the specified number of digits
 function generateOTP(digits) {
   const otpDigits = '0123456789';
@@ -41,27 +48,24 @@ async function writeToUserLog(userid, logaction, compid, isweb) {
  */
 async function sendEmail(emailTo, subject, text) {
   if (!emailTo || !subject || !text) {
-    console.log(emailTo);
-    console.log(subject);
-    console.log(text);
     throw new Error('Invalid request or missing parameters');
   }
 
   try {
     // Create a transporter object using SMTP transport method
     const transporter = nodemailer.createTransport({
-      host: 'smtp.hostinger.com', // Your SMTP server host
+      host: emailHost, // Your SMTP server host
       port: 465, // Your SMTP server port
       secure: true, // Use TLS (true for 465, false for other ports)
       auth: {
-        user: 'kfinvoice', // Your SMTP username
-        pass: 'Kf!12345678', // Your SMTP password
+        user: emailUser, // Your SMTP username
+        pass: emailPass, // Your SMTP password
       },
     });
 
     // Set up email data
     const mailOptions = {
-      from: 'kfinvoice@knowforth.in', // Sender's email address
+      from: emailUser, // Sender's email address
       to: emailTo, // Recipient's email address
       subject: subject, // Subject of the email
       text: text, // Plain text body of the email
@@ -91,14 +95,14 @@ async function sendEmail(emailTo, subject, text) {
  */
 async function sendSMS( message, numbers) {
   try {
-    const url = 'https://api.textlocal.in/send/';
-    const apiKey = 'jCos0jGuAPE-PdFyiAqkxPoKFq7wzLSzqr9con60HH';
-    const sender = '919999741939';
+    const url = smsURL;
+    const apiKey = smsAPI;
+    const sender = smsSender;
 
     const params = new URLSearchParams({
       apikey: apiKey,
-      sender: sender,
       message: message,
+      sender: sender,
       numbers: numbers,
     });
 
