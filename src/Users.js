@@ -3,8 +3,9 @@ const router = express.Router();
 const pool = require('../db');
 const multer = require('multer');
 const path = require('path');
+const sharp = require('sharp');
 const authenticateToken = require('../authMiddleware');
-const { generateOTP, sendEmail, sendSMS, savePicture, fetchPicture, writeToUserLog } = require('./common');
+const { generateOTP, sendEmail, sendSMS, deleteTempFiles, getPicFromUploads, savePicToUploads } = require('./common');
 
 const upload = multer({ dest: 'uploads/' });
 
@@ -279,7 +280,7 @@ router.post('/api/SendMobileOTP', authenticateToken, async (req, res) => {
 /**
  * @swagger
  * /api/VerifyOTP/{otpType}/{userid}/{otp}:
- *   post:
+ *   get:
  *     summary: Check OTP based on user ID, OTP, and OTP type (email or mobile)
  *     tags: [Users]
  *     parameters:
@@ -311,8 +312,8 @@ router.post('/api/SendMobileOTP', authenticateToken, async (req, res) => {
  *       500:
  *         description: Internal server error
  */
-router.post('/api/VerifyOTP/:otpType/:userid/:otp', async (req, res) => {
-  const { otpType, userid, otp } = req.body;
+router.get('/api/VerifyOTP/:otpType/:userid/:otp', async (req, res) => {
+  const { otpType, userid, otp } = req.params;
 
   if (!userid || !otp || !otpType) {
     return res.status(400).json({ error: 'Invalid request or missing parameters' });
@@ -341,7 +342,7 @@ router.post('/api/VerifyOTP/:otpType/:userid/:otp', async (req, res) => {
     const verField = otpType === 'email' ? emailid : mobileno;
 
     if (otp === otpField) {
-      const updateQuery = `UPDATE "Users" SET ${updateField} = true, ${lastverField} = ${verField} WHERE userid = $1`;
+      const updateQuery = `UPDATE "Users" SET ${updateField} = true, ${lastverField} = '${verField}' WHERE userid = $1`;
       await pool.query(updateQuery, [userid]);
       const msg = otpType === 'email' ? 'You email has been verified Successfully. Login to Super GST Invoice to continue.' : 'Your Mobile Number has been verified Successfully. Login to Super GST Invoice to continue.';
       return res.status(200).json({ Message: msg });
@@ -452,7 +453,7 @@ router.get('/api/GetUserDet/:userid', authenticateToken, async (req, res) => {
  * @swagger
  * /api/GetUserPicture/{userid}:
  *   get:
- *     summary: Get user picture from the Users table based on the userid
+ *     summary: Get user profile picture from the Users table based on the userid
  *     tags: [Users]
  *     security:
  *       - basicAuth: []
@@ -464,26 +465,15 @@ router.get('/api/GetUserDet/:userid', authenticateToken, async (req, res) => {
  *         required: true
  *         description: User ID
  *     responses:
- *       200:
- *         description: Returns the user picture
+ *       '200':
+ *         description: Successful operation. Returns the user's profile picture as a jpg image.
  *         content:
- *           '*':
- *            schema:
- *               type: object
- *               properties:
- *                 picture:
- *                   type: string
- *                   format: binary 
- *       500:
- *         description: Failed to fetch the user details.
- *         content:
- *           application/json:
+ *           image/jpeg:
  *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   description: Error message.
+ *               type: string
+ *               format: binary
+ *       '404':
+ *         description: User profile picture not found.
  */
 router.get('/api/GetUserPicture/:userid', authenticateToken, async (req, res) => {
   const { userid } = req.params;
@@ -492,8 +482,13 @@ router.get('/api/GetUserPicture/:userid', authenticateToken, async (req, res) =>
     return res.status(400).json({ error: 'Invalid request or missing parameters' });
   }
 
+
   try {
-    const query = 'SELECT company, salid, fullname, emailid, emailverified as isemailverified, mobileno, mobileverified as ismobileverified, usertype, picture FROM "Users" WHERE userid = $1';
+
+    const folderPath = 'uploads';
+    deleteTempFiles(folderPath);
+  
+    const query = 'SELECT profilepic FROM "Users" WHERE userid = $1';
     const { rows } = await pool.query(query, [userid]);
 
     if (rows.length === 0) {
@@ -501,35 +496,30 @@ router.get('/api/GetUserPicture/:userid', authenticateToken, async (req, res) =>
     }
 
     user = rows[0];
-    let picname = '/profilepic/emptyface.jpg';
-    if (user.picture != null) {
-      picname = user.picture;
+    const pictureData = user.profilepic;
+
+    if (pictureData.length === 0) {
+      return res.status(400).send('No profile picture available for the user.');
     }
-
-    const extension = path.extname(picname).toLowerCase();
-    let contentType = 'application/octet-stream'; // Default content type
-
-    // Determine the content type based on the image extension
-    if (extension === '.jpg' || extension === '.jpeg') {
-      contentType = 'image/jpeg';
-    } else if (extension === '.png') {
-      contentType = 'image/png';
-    } else if (extension === '.gif') {
-      contentType = 'image/gif';
-    } else if (extension === '.webp') {
-      contentType = 'image/webp';
+    const picturePath = await savePicToUploads(userid, pictureData, "User");
+    if (picturePath === null) {
+      res.status(405).json({ error: 'Profile Picture not found' });
     }
-
-
-    const data  =  await fetchPicture(picname);
-    res.set('Content-Type', contentType);
-    res.status(200).send(data);
+    else
+    {
+      const picData = await getPicFromUploads(userid,"User");
+      if (picData === null) {
+        res.status(404).json({ error: 'Profile Picture not found' });
+      } else {
+        res.contentType('image/jpeg'); 
+        res.end(picData); 
+      }
+    }
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
-
 
 /**
  * @swagger
@@ -588,22 +578,18 @@ router.put('/api/UpdateUserDet', upload.single('picture'),  authenticateToken, a
 
     const { emailid: savedEmail, mobileno: savedMobile, lastveremail, lastvermobile } = rows[0];
 
-    const extension = path.extname(req.file.originalname).toLowerCase();
+    const tempPath = req.file.path;
 
-    let pictureUrl = await savePicture(req.file, 'UP'+userid.toString()+extension);
-
-    if (pictureUrl) {
-      pictureUrl = '/profilepic/' + 'UP'+userid.toString()+extension;
-    }
+    const pictureData = await sharp(tempPath).resize(90, 90).toBuffer();
 
     // Update the user details
     const updateQuery = `
       UPDATE "Users"
-      SET salid = $1, fullname = $2, emailid = $3, mobileno = $4, picture = $5
+      SET salid = $1, fullname = $2, emailid = $3, mobileno = $4, profilepic = $5
       WHERE userid = $6
     `;
 
-    await pool.query(updateQuery, [salid, fullname, emailid, mobileno, pictureUrl, userid]);
+    await pool.query(updateQuery, [salid, fullname, emailid, mobileno, pictureData, userid]);
 
     // Check if the saved email matches the last verified email
     const emailverified = lastveremail === savedEmail;
