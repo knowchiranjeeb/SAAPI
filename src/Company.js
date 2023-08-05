@@ -69,7 +69,7 @@ router.get('/api/GetCompanyLogo/:compid', authenticateToken, async (req, res) =>
     company = rows[0];
     const pictureData = company.logo;
 
-    if (pictureData.length === 0) {
+    if (pictureData === null) {
       return res.status(408).send('No logo available for the company.');
     }
 

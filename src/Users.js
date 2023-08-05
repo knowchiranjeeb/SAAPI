@@ -498,7 +498,7 @@ router.get('/api/GetUserPicture/:userid', authenticateToken, async (req, res) =>
     user = rows[0];
     const pictureData = user.profilepic;
 
-    if (pictureData.length === 0) {
+    if (pictureData === null) {
       return res.status(400).send('No profile picture available for the user.');
     }
     const picturePath = await savePicToUploads(userid, pictureData, "User");
