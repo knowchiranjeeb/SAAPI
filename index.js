@@ -1,6 +1,6 @@
 // Required Dependencies
 //const https = require('https');
-//const fs = require('fs');
+const fs = require('fs');
 const express = require('express');
 const bodyParser = require('body-parser');
 const swaggerUI = require('swagger-ui-express');
@@ -24,7 +24,13 @@ const app = express();
 const port = 8000;
 
 
-app.use(cors());
+//app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3000',
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  credentials: true // Set this to true if you are sending cookies or using sessions
+}));
+
 
 // Middleware
 app.use(bodyParser.json());
@@ -47,9 +53,10 @@ const options = {
   };
   
   const specs = swaggerJsDoc(options);
+  fs.writeFileSync('./swagger.json', JSON.stringify(specs, null, 2));
+
   app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(specs));
-
-
+  
   // API endpoints
 app.use('/', btypeRoutes);
 app.use('/', indtypeRoutes);
