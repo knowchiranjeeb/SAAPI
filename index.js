@@ -19,6 +19,7 @@ const compRoutes = require('./src/Company');
 const itemRoutes = require('./src/Items');
 const hsnRoutes = require('./src/HSNCode');
 const userRoutes = require('./src/Users');
+const bulkRoutes = require('./src/Bulk');
 const cors = require('cors');
 const app = express();
 const port = 8000;
@@ -26,7 +27,8 @@ const port = 8000;
 
 //app.use(cors());
 app.use(cors({
-  origin: 'http://localhost:3000',
+//  origin: 'http://localhost:3000',
+  origin: '*',
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   credentials: true // Set this to true if you are sending cookies or using sessions
 }));
@@ -72,6 +74,7 @@ app.use('/', compRoutes);
 app.use('/', userRoutes);
 app.use('/', itemRoutes);
 app.use('/', hsnRoutes);
+app.use('/', bulkRoutes);
 
 // Start the server
 
